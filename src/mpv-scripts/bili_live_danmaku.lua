@@ -1,6 +1,7 @@
 local utils = require("mp.utils")
 local opts = require("mp.options")
 local msg = require("mp.msg")
+local unpack = unpack or table.unpack
 
 local o = {
     enabled = true,
@@ -8,8 +9,10 @@ local o = {
     font_size = 40,
     max_lines = 14,
     duration = 11.0,
+    simple_spawn_mode = true,
     horizontal_span_ratio = 1.0,
     area_ratio = 0.45,
+    opacity = 0.80,
     margin_top = 24,
     line_gap = 8,
     min_interval = 0.25,
@@ -19,6 +22,7 @@ local o = {
     merge_tolerance = 0,
     max_screen_danmaku = 0,
     video_seek_reset_threshold = 0.70,
+    video_prefill_enabled = false,
     video_prefill_extra = 1.20,
     video_prefill_max = 260,
     video_prefill_min_elapsed = 0.10,
@@ -33,7 +37,7 @@ local o = {
     video_retry_batch = 120,
     video_retry_tick_batch = 56,
     video_retry_step = 0.08,
-    video_startup_hold = true,
+    video_startup_hold = false,
     video_startup_hold_timeout = 4.0,
     show_user = false,
     force_room_id = "",
@@ -149,9 +153,50 @@ local function clamp(value, minv, maxv)
     return value
 end
 
+local function ass_alpha_from_opacity(opacity)
+    local v = tonumber(opacity)
+    if not v then
+        v = 0.80
+    end
+    v = clamp(v, 0, 1)
+    return string.format("%02X", math.floor((1 - v) * 255 + 0.5))
+end
+
 local function get_track_width(screen_w)
+    if o.simple_spawn_mode then
+        return screen_w
+    end
     local ratio = clamp(tonumber(o.horizontal_span_ratio) or 1.0, 0.12, 1.0)
     return screen_w * ratio
+end
+
+-- 基于 uosc_danmaku 的实时位置插值逻辑，显示层按当前时间逐帧算坐标
+local function realtime_position_text(event, pos, height, delay)
+    local displayarea = tonumber(height * o.area_ratio)
+    if not event.move then
+        local event_pos = event.pos or {}
+        local current_x = tonumber(event_pos[1]) or 0
+        local current_y = tonumber(event_pos[2])
+        if not current_y or current_y > displayarea then
+            return nil
+        end
+        return string.format("{\\pos(%.1f,%.1f)\\an7}%s", current_x, current_y, event.text), current_x, current_y
+    end
+
+    local x1, y1, x2, y2 = unpack(event.move)
+    local duration = (event.end_time or 0) - (event.start_time or 0)
+    if duration <= 0 then
+        return nil
+    end
+    local progress = (pos - event.start_time - delay) / duration
+    local current_x = tonumber(x1 + (x2 - x1) * progress)
+    local current_y = tonumber(y1 + (y2 - y1) * progress)
+
+    local clean_text = (event.text or ""):gsub("\\move%(.-%)", "")
+    if not current_y or current_y > displayarea then
+        return nil
+    end
+    return string.format("{\\pos(%.1f,%.1f)\\an7}%s", current_x, current_y, clean_text), current_x, current_y
 end
 
 local function reload_runtime_options(keep_enabled)
@@ -336,7 +381,7 @@ local function begin_video_start_hold()
     video_start_hold_active = false
     video_start_hold_prev_pause = nil
 
-    if not o.video_startup_hold then
+    if not o.video_startup_hold or not o.video_prefill_enabled then
         return
     end
 
@@ -362,6 +407,9 @@ local function get_video_seek_reset_threshold()
 end
 
 local function prefill_video_comments(raw_time)
+    if not o.video_prefill_enabled then
+        return 0
+    end
     if source_mode ~= "video" or type(video_events) ~= "table" or #video_events == 0 then
         return 0
     end
@@ -432,6 +480,10 @@ end
 
 local function align_video_next_index(raw_time)
     local t = tonumber(raw_time) or 0
+    if not o.video_prefill_enabled then
+        video_next_index = find_video_event_upper_index(t)
+        return
+    end
     local startup_advance = clamp(tonumber(o.video_prefill_startup_advance) or 0.35, 0, 2.0)
     local horizon = math.max(0.05, startup_advance)
     video_next_index = find_video_event_upper_index(t + horizon)
@@ -1077,6 +1129,9 @@ end
 
 local function calc_dynamic_min_gap(lane_count)
     local base_gap = clamp(tonumber(o.item_margin) or 16, 4, 200)
+    if o.simple_spawn_mode then
+        return base_gap
+    end
     if lane_count <= 0 then
         return base_gap
     end
@@ -1153,6 +1208,23 @@ local function pick_lane_range(start_lane, end_lane, now_time, new_width, new_du
 end
 
 local function pick_lane(now_time, lane_count, new_width, new_duration, screen_w, min_gap)
+    if o.simple_spawn_mode then
+        local fallback_gap = -math.huge
+        local safe_count = 0
+        for lane = 1, lane_count do
+            local tail = latest_lane_item(lane, now_time)
+            local gap = lane_min_gap(tail, new_width, new_duration, now_time, screen_w)
+            if gap >= min_gap then
+                safe_count = safe_count + 1
+                return lane, gap, safe_count, lane_count
+            end
+            if gap > fallback_gap then
+                fallback_gap = gap
+            end
+        end
+        return nil, fallback_gap, safe_count, lane_count
+    end
+
     local top_limit = calc_top_lane_limit(lane_count)
     local best_lane, best_gap, safe_count, fallback_gap =
         pick_lane_range(1, top_limit, now_time, new_width, new_duration, screen_w, min_gap)
@@ -1476,6 +1548,7 @@ render_overlay = function()
     local dropped_invalid = 0
     local visible_min_x = nil
     local visible_max_x = nil
+    local style_alpha = ass_alpha_from_opacity(o.opacity)
     lane_tail_cache = {}
     for i = 1, old_comment_count do
         local item = comments[i]
@@ -1498,27 +1571,31 @@ render_overlay = function()
                     end
                     lane_tail_cache[item_lane] = item
                     if elapsed >= 0 then
-                        local progress = elapsed / item_duration
                         local item_width = tonumber(item.width) or (font_size * 2)
                         local item_track_w = tonumber(item.track_w) or get_track_width(w)
-                        -- 从右边缘进入，直到整条弹幕完全越过左边缘后才结束
-                        -- 始终从右侧外进入，再按压缩后的轨迹长度向左移动
-                        local x = w - (item_track_w + item_width) * progress
                         local y = o.margin_top + (item_lane - 1) * lane_height
-                        if not visible_min_x or x < visible_min_x then
-                            visible_min_x = x
+                        local event = {
+                            start_time = item_start,
+                            end_time = item_start + item_duration,
+                            text = item_text,
+                            move = {w, y, w - (item_track_w + item_width), y},
+                        }
+                        local text_with_pos, current_x = realtime_position_text(event, now_time, h, 0)
+                        if text_with_pos then
+                            if not visible_min_x or current_x < visible_min_x then
+                                visible_min_x = current_x
+                            end
+                            if not visible_max_x or current_x > visible_max_x then
+                                visible_max_x = current_x
+                            end
+                            line_count = line_count + 1
+                            lines[line_count] = string.format(
+                                "{\\q2\\fs%d\\bord1.6\\blur0.6\\shad0\\alpha&H%s&\\1c&HFFFFFF&\\3c&HD6A100&\\4c&HD6A100&}%s",
+                                font_size,
+                                style_alpha,
+                                text_with_pos
+                            )
                         end
-                        if not visible_max_x or x > visible_max_x then
-                            visible_max_x = x
-                        end
-                        line_count = line_count + 1
-                        lines[line_count] = string.format(
-                            "{\\an7\\q2\\fs%d\\bord1.6\\blur0.6\\shad0\\alpha&H33&\\1c&HFFFFFF&\\3c&HD6A100&\\4c&HD6A100&\\pos(%.1f,%.1f)}%s",
-                            font_size,
-                            x,
-                            y,
-                            item_text
-                        )
                     end
                 end
             else
@@ -1567,6 +1644,8 @@ render_overlay = function()
         video_first_visible_logged = true
     end
 
+    overlay.res_x = w
+    overlay.res_y = h
     apply_overlay_data(table.concat(lines, "\n", 1, line_count))
     record_render_perf(render_start, line_count)
 end
@@ -2021,12 +2100,12 @@ local function faster_danmaku()
 end
 
 local function smaller_font()
-    font_size = math.floor(clamp(font_size - 2, 18, 72))
+    font_size = math.floor(clamp(font_size - 2, 18, 144))
     show_style_status()
 end
 
 local function larger_font()
-    font_size = math.floor(clamp(font_size + 2, 18, 72))
+    font_size = math.floor(clamp(font_size + 2, 18, 144))
     show_style_status()
 end
 

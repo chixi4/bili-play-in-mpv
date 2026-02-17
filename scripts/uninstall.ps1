@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "[bilil-play] $Message"
+    Write-Host "[bili-play] $Message"
 }
 
 function Ensure-Dir {
@@ -25,8 +25,14 @@ function Ensure-Dir {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
 }
 
-$manifestPath = Join-Path $TargetMpvRoot 'tools\bilil-play-install-manifest.tsv'
+$manifestPath = Join-Path $TargetMpvRoot 'tools\bili-play-install-manifest.tsv'
+$legacyManifestPath = Join-Path $TargetMpvRoot 'tools\bilil-play-install-manifest.tsv'
 $records = @()
+
+if (-not (Test-Path -LiteralPath $manifestPath) -and (Test-Path -LiteralPath $legacyManifestPath)) {
+    $manifestPath = $legacyManifestPath
+    Write-Info "use legacy manifest: $manifestPath"
+}
 
 if (Test-Path -LiteralPath $manifestPath) {
     $lines = Get-Content -LiteralPath $manifestPath

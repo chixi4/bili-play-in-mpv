@@ -2,46 +2,45 @@
 
 ## 1. 点击书签后页面白屏
 
-原因是书签直接把当前标签页跳到 `mpvplay://`。
+原因通常是书签直接把当前页面跳到 `mpvplay://`。
 
-处理方式是改用后台触发版书签，脚本见 `docs/quickstart.md` 和 `src/bookmarklet/open-in-mpv.js.txt`。
+处理方式是使用项目提供的后台触发书签，脚本在 `src/bookmarklet/open-in-mpv.js.txt`。
 
-## 2. 点击协议后终端闪一下就没了
+## 2. 点击协议后终端闪一下就退出
 
-先检查注册表打开命令是否直连 PowerShell 脚本，而不是走 `.cmd` 中转。
+先检查协议打开命令是否正确指向 `mpvplay-launch.ps1`。
 
 ```powershell
 Get-ItemProperty -Path 'HKCU:\Software\Classes\mpvplay\shell\open\command' -Name '(default)'
 ```
 
-如果不一致，重新执行安装脚本。
+如果路径不一致，重新执行安装脚本。
 
 ```powershell
 .\scripts\install.ps1
 ```
 
-## 3. 前几秒看不到弹幕
+## 3. 点播开始后几秒才看到弹幕
 
-点播弹幕是按时间轴加载，开场会做预填充和轨道排布。如果需要进一步调优，检查下面参数。
+当前默认关闭了预填充 `video_prefill_enabled=no`，第一批弹幕会按时间轴实时进入，不会提前铺满。
 
-1. `video_prefill_startup_advance`
-2. `video_prefill_min_progress`
+如果你需要开场更快看到更多弹幕，可以在配置里打开预填充并调以下参数。
+
+1. `video_prefill_enabled=yes`
+2. `video_prefill_startup_advance`
 3. `video_emit_batch`
 
-文件路径是 `src/config/bili_live_danmaku.conf`。
+配置路径是 `src/config/bili_live_danmaku.conf`。
 
-## 4. UI 按钮和 Ctrl+d 不一致
+## 4. uosc 按钮和 Ctrl+D 状态不一致
 
-确认 `uosc.conf` 的 controls 包含 `show_danmaku@bili_live_danmaku` 入口。
+确认 `src/config/uosc.conf` 的 `controls` 中保留 `show_danmaku@bili_live_danmaku`。
 
-文件路径是 `src/config/uosc.conf`。
+## 5. 字号调节范围不符合预期
 
-## 5. 如何看调试日志
+当前脚本范围是 `18` 到 `144`，默认值由 `font_size` 控制。快捷键是 `Ctrl+Alt+U` 和 `Ctrl+Alt+I`。
 
-协议启动日志默认在本机临时目录。
+## 6. 性能日志查看位置
 
-`%TEMP%\mpvplay_debug.log`
-
-弹幕性能日志在 mpv 配置目录。
-
-`%APPDATA%\mpv\bili_live_danmaku_perf.log`
+1. 协议启动日志在 `%TEMP%\mpvplay_debug.log`。
+2. 弹幕性能日志在 `%APPDATA%\mpv\bili_live_danmaku_perf.log`。

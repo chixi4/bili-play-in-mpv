@@ -12,7 +12,7 @@ $records = New-Object System.Collections.Generic.List[string]
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "[bilil-play] $Message"
+    Write-Host "[bili-play] $Message"
 }
 
 function Ensure-Dir {
@@ -44,7 +44,7 @@ function Backup-And-Copy {
 
     $backupPath = ''
     if (Test-Path -LiteralPath $Destination) {
-        $backupPath = "$Destination.bilil-play.bak.$timestamp"
+        $backupPath = "$Destination.bili-play.bak.$timestamp"
         if ($DryRun) {
             Write-Info "DRYRUN backup $Destination -> $backupPath"
         } else {
@@ -107,14 +107,14 @@ if (-not (Test-Path -LiteralPath $inputDest)) {
     }
 
     if ($missing.Count -gt 0) {
-        $backupPath = "$inputDest.bilil-play.bak.$timestamp"
+        $backupPath = "$inputDest.bili-play.bak.$timestamp"
         if ($DryRun) {
             Write-Info "DRYRUN backup $inputDest -> $backupPath"
             Write-Info "DRYRUN append $($missing.Count) missing input bindings"
         } else {
             Copy-Item -LiteralPath $inputDest -Destination $backupPath -Force
             Add-Content -LiteralPath $inputDest -Value ''
-            Add-Content -LiteralPath $inputDest -Value '# bilil-play danmaku bindings'
+            Add-Content -LiteralPath $inputDest -Value '# bili-play danmaku bindings'
             foreach ($binding in $missing) {
                 Add-Content -LiteralPath $inputDest -Value $binding
             }
@@ -168,7 +168,7 @@ if ($DryRun) {
     Set-ItemProperty -Path $protocolCommandKey -Name '(default)' -Value $openCommand
 }
 
-$manifestPath = Join-Path $TargetMpvRoot 'tools\bilil-play-install-manifest.tsv'
+$manifestPath = Join-Path $TargetMpvRoot 'tools\bili-play-install-manifest.tsv'
 if ($DryRun) {
     Write-Info "DRYRUN manifest path: $manifestPath"
 } else {
