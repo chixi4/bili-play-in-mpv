@@ -1,0 +1,16 @@
+# runtime logs
+*.log
+runtime/logs/*
+!runtime/logs/.keep
+
+# local diagnostics and backups
+diagnostics/
+backups/
+**/diagnostics/
+**/backups/
+*.bak
+*.tmp
+
+# editor and system
+.DS_Store
+Thumbs.db

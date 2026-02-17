@@ -1,0 +1,1 @@
+javascript:(function(){var u='mpvplay://'+encodeURIComponent(location.href);var f=document.createElement('iframe');f.style.display='none';f.src=u;(document.body||document.documentElement).appendChild(f);setTimeout(function(){try{f.remove();}catch(e){}},1500);})();

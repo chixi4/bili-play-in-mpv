@@ -1,0 +1,20 @@
+# mpv 按键绑定
+
+# 皮肤切换 (也在 skin-switcher.lua 中定义)
+# Ctrl+u  切换到 uosc
+# Ctrl+m  切换到 ModernX
+# Ctrl+t  在两个皮肤之间切换
+
+# Track selection menus (requires scripts/select.lua)
+Ctrl+a script-binding select/select-aid
+Ctrl+s script-binding select/select-sid
+
+# B站直播弹幕开关与重连
+Ctrl+d script-message bili-live-danmaku-toggle
+Ctrl+Shift+d script-message bili-live-danmaku-restart
+
+# B站直播弹幕样式与速度
+Ctrl+Alt+j script-message bili-live-danmaku-slower
+Ctrl+Alt+k script-message bili-live-danmaku-faster
+Ctrl+Alt+u script-message bili-live-danmaku-smaller
+Ctrl+Alt+i script-message bili-live-danmaku-larger
