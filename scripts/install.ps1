@@ -182,4 +182,5 @@ if ($DryRun) {
 Write-Info 'install done'
 Write-Info 'verify command 1: mpv "https://www.bilibili.com/video/BVxxxxx/"'
 Write-Info 'verify command 2: mpv BVxxxxx'
-Write-Info 'verify command 3: start mpvplay://https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBVxxxxx%2F'
+Write-Info 'verify command 3: mpv "https://www.youtube.com/watch?v=dQw4w9WgXcQ"'
+Write-Info 'verify command 4: start mpvplay://https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ'

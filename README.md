@@ -1,6 +1,6 @@
 # bili-play-in-mpv
 
-这个项目把你当前可用的 B 站弹幕方案做成了可安装的工具包，目标是让 mpv 在直播和点播里稳定显示弹幕，并且保留你已经验证过的流畅度优化。
+这个项目把你当前可用的 B 站弹幕方案做成了可安装的工具包，目标是让 mpv 在直播和点播里稳定显示弹幕，同时补齐 YouTube 播放入口，并且保留你已经验证过的流畅度优化。
 
 当前仓库内容与本机生效版本保持一致，包含脚本、配置、协议启动器、安装卸载脚本和文档。
 
@@ -12,6 +12,7 @@
 4. 默认启用简单出现模式 `simple_spawn_mode=yes`，优先保证稳定和可预期。
 5. 点播预填充默认关闭 `video_prefill_enabled=no`，不再提前塞历史弹幕。
 6. 默认字号是 `72`，运行时调节范围是 `18` 到 `144`。
+7. `mpvplay://` 协议同时支持 B 站和 YouTube 链接，YouTube 也支持直接给视频 ID。
 
 ## 功能清单
 
@@ -21,6 +22,7 @@
 4. 支持浏览器书签后台触发，避免页面白屏。
 5. 支持 `uosc` 控制栏弹幕按钮和 `Ctrl+D` 联动。
 6. 支持性能日志，便于定位卡顿与拥塞。
+7. 支持 YouTube 链接和 `11` 位视频 ID 直开。
 
 ## 环境要求
 
@@ -29,6 +31,7 @@
 3. PowerShell 可用。
 4. curl 可用。
 5. 可选，Firefox 或 Chrome 已登录 B 站，用于需要登录态的清晰度。
+6. 建议安装最新 `yt-dlp`，用于 B 站与 YouTube 链接解析。
 
 ## 安装
 
@@ -70,12 +73,15 @@ Set-ExecutionPolicy -Scope Process Bypass
 mpv "https://www.bilibili.com/video/BVxxxxx/"
 mpv BVxxxxx
 mpv "https://live.bilibili.com/233"
+mpv "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
 ### 协议方式播放
 
 ```powershell
 start "mpvplay://https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBVxxxxx%2F"
+start "mpvplay://https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ"
+start "mpvplay://dQw4w9WgXcQ"
 ```
 
 ### 浏览器书签播放
@@ -83,7 +89,7 @@ start "mpvplay://https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBVxxxxx%2F"
 把下面这行完整代码作为书签地址。
 
 ```text
-javascript:(function(){var u='mpvplay://'+encodeURIComponent(location.href);var f=document.createElement('iframe');f.style.display='none';f.src=u;(document.body||document.documentElement).appendChild(f);setTimeout(function(){try{f.remove();}catch(e){}},1500);})();
+javascript:(function(){var f=document.createElement('iframe');f.style.display='none';f.src='mpvplay://'+encodeURIComponent(location.href);(document.body||document.documentElement).appendChild(f);setTimeout(function(){try{f.remove();}catch(e){}},1200);})();
 ```
 
 这个写法是后台触发，不会把当前标签页跳成白屏。

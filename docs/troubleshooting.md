@@ -44,3 +44,13 @@ Get-ItemProperty -Path 'HKCU:\Software\Classes\mpvplay\shell\open\command' -Name
 
 1. 协议启动日志在 `%TEMP%\mpvplay_debug.log`。
 2. 弹幕性能日志在 `%APPDATA%\mpv\bili_live_danmaku_perf.log`。
+
+## 7. YouTube 链接打不开
+
+优先检查 `yt-dlp` 是否过旧，更新后再试。
+
+```powershell
+yt-dlp -U
+```
+
+如果你是用协议打开，也可以先看协议日志确认是否正确转成了 YouTube 标准链接。
